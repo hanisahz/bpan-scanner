@@ -1,0 +1,14 @@
+{
+    "version": 2,
+    "cleanUrls": true,
+    "routes": [
+        {
+            "src": "/api/attendance",
+            "dest": "/api/attendance.js"
+        },
+        {
+            "src": "/(.*)",
+            "dest": "/index.html"
+        }
+    ]
+}

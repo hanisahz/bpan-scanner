@@ -1,0 +1,9 @@
+{
+    "name": "bphb-officer-scanner",
+    "version": "1.0.0",
+    "description": "Mobile QR Code Officer Scanner for BPHB Annual Dinner hosted on Vercel",
+    "private": true,
+    "scripts": {
+        "start": "vercel dev"
+    }
+}

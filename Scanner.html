@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <script src="https://unpkg.com/html5-qrcode"></script>
+
+    <style>
+        :root {
+            --green: #173f35;
+            --green2: #245747;
+            --bg: #f3f7f5;
+            --border: #d7e3dd;
+            --muted: #63756d;
+            --red: #b42318;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 18px 12px;
+            background: var(--bg);
+            color: #152c26;
+            font-family: Arial, sans-serif;
+        }
+
+        .card {
+            max-width: 650px;
+            margin: auto;
+            padding: 24px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            box-shadow: 0 8px 30px rgba(20, 50, 40, .05);
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            color: var(--green);
+            font-size: 28px;
+        }
+
+        .muted {
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        label {
+            display: block;
+            margin: 18px 0 8px;
+            font-weight: 700;
+        }
+
+        input {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #c7d7cf;
+            border-radius: 12px;
+            font-size: 17px;
+        }
+
+        button {
+            padding: 14px 16px;
+            border: 0;
+            border-radius: 12px;
+            background: var(--green);
+            color: white;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            opacity: .55;
+            cursor: wait;
+        }
+
+        .full {
+            width: 100%;
+            margin-top: 12px;
+        }
+
+        .secondary {
+            background: #e6efea;
+            color: var(--green);
+        }
+
+        .message {
+            display: none;
+            margin-top: 14px;
+            padding: 13px;
+            border-radius: 12px;
+            overflow-wrap: anywhere;
+            line-height: 1.45;
+        }
+
+        .error {
+            display: block;
+            color: var(--red);
+            background: #fff0ef;
+        }
+
+        .success {
+            display: block;
+            color: var(--green);
+            background: #e9f6ef;
+        }
+
+        #reader {
+            width: 100%;
+            margin-top: 18px;
+            overflow: hidden;
+            border-radius: 14px;
+        }
+
+        #reservation {
+            display: none;
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 18px 0;
+        }
+
+        .detail {
+            background: #f5f8f6;
+            padding: 13px;
+            border-radius: 12px;
+            overflow-wrap: anywhere;
+        }
+
+        .detail small {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--muted);
+        }
+
+        .person {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            padding: 15px 4px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .person input {
+            width: 22px;
+            height: 22px;
+            flex: 0 0 22px;
+            margin: 0;
+        }
+
+        .person label {
+            margin: 0;
+            flex: 1;
+            cursor: pointer;
+        }
+
+        .person small {
+            display: block;
+            margin-top: 5px;
+            color: var(--muted);
+            font-weight: 400;
+        }
+
+        .status {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--green2);
+        }
+
+        .present {
+            color: #18794e;
+        }
+
+        .summary {
+            margin-top: 18px;
+            padding: 14px;
+            background: #f5f8f6;
+            border-radius: 12px;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 420px) {
+            .card {
+                padding: 18px 14px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .details {
+                grid-template-columns: 1fr;
+            }
+
+            button {
+                font-size: 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main class="card">
+        <h1>Annual Dinner Check-in</h1>
+        <p class="muted">
+            Enter your Staff ID before scanning an attendee's QR pass.
+        </p>
+
+        <label for="staffId">Officer Staff ID</label>
+        <input id="staffId" type="text" placeholder="Enter your Staff ID" autocomplete="off" required>
+
+        <button id="startButton" class="full" type="button">
+            Start QR Scanner
+        </button>
+
+        <button id="stopButton" class="full secondary" type="button" hidden>
+            Stop Scanner
+        </button>
+
+        <div id="message" class="message" role="status"></div>
+        <div id="reader"></div>
+
+        <section id="reservation">
+            <h2>Reservation Details</h2>
+
+            <div class="details">
+                <div class="detail">
+                    <small>Employee</small>
+                    <strong id="employeeName"></strong>
+                </div>
+                <div class="detail">
+                    <small>Employee number</small>
+                    <strong id="employeeNumber"></strong>
+                </div>
+                <div class="detail">
+                    <small>Spouse</small>
+                    <strong id="spouseName"></strong>
+                </div>
+                <div class="detail">
+                    <small>Table number</small>
+                    <strong id="tableNumber"></strong>
+                </div>
+            </div>
+
+            <h3>Select attendees to check in</h3>
+            <p class="muted">
+                Tick each person who has arrived. Employees and spouses can be
+                checked in separately.
+            </p>
+
+            <div id="attendeeList"></div>
+
+            <button id="checkInButton" class="full" type="button">
+                Confirm Check-in
+            </button>
+
+            <button id="scanNextButton" class="full secondary" type="button">
+                Scan Next Pass
+            </button>
+
+            <div id="summary" class="summary" hidden></div>
+        </section>
+    </main>
+
+    <script>
+        const staffInput = document.getElementById("staffId");
+        const startButton = document.getElementById("startButton");
+        const stopButton = document.getElementById("stopButton");
+        const checkInButton = document.getElementById("checkInButton");
+        const scanNextButton = document.getElementById("scanNextButton");
+        const message = document.getElementById("message");
+        const reservationPanel = document.getElementById("reservation");
+        const attendeeList = document.getElementById("attendeeList");
+        const summary = document.getElementById("summary");
+
+        let scanner = null;
+        let scannerRunning = false;
+        let processing = false;
+        let currentToken = "";
+        let currentReservation = null;
+
+        function showMessage(text, type) {
+            message.textContent = text;
+            message.className = "message " + type;
+        }
+
+        function clearMessage() {
+            message.textContent = "";
+            message.className = "message";
+        }
+
+        function getStaffId() {
+            const id = staffInput.value.trim();
+
+            if (!id) {
+                showMessage("Please enter your Staff ID first.", "error");
+                staffInput.focus();
+                return "";
+            }
+
+            return id;
+        }
+
+        function setDetails(data) {
+            document.getElementById("employeeName").textContent =
+                data.employeeName || "-";
+
+            document.getElementById("employeeNumber").textContent =
+                data.employeeNumber || "-";
+
+            document.getElementById("spouseName").textContent =
+                data.spouseName || "No spouse registered";
+
+            document.getElementById("tableNumber").textContent =
+                data.tableNumber || "-";
+        }
+
+        function renderAttendees(attendees) {
+            attendeeList.replaceChildren();
+
+            attendees.forEach(person => {
+                const row = document.createElement("div");
+                row.className = "person";
+
+                const checkbox = document.createElement("input");
+                checkbox.type = "checkbox";
+                checkbox.id = "att-" + person.attendeeId;
+                checkbox.value = person.attendeeId;
+                checkbox.checked = false;
+                checkbox.disabled = person.status === "PRESENT";
+
+                const label = document.createElement("label");
+                label.htmlFor = checkbox.id;
+
+                const name = document.createElement("strong");
+                name.textContent = person.name;
+
+                const info = document.createElement("small");
+                info.textContent = person.type + " · Table " +
+                    (person.tableNumber || "-");
+
+                label.append(name, info);
+
+                const status = document.createElement("span");
+                status.className = "status" +
+                    (person.status === "PRESENT" ? " present" : "");
+
+                status.textContent = person.status === "PRESENT"
+                    ? "PRESENT"
+                    : "PENDING";
+
+                row.append(checkbox, label, status);
+                attendeeList.appendChild(row);
+            });
+        }
+
+        async function stopScanner() {
+            if (!scanner || !scannerRunning) return;
+
+            try {
+                await scanner.stop();
+            } catch (e) {
+                // Ignore stop errors when the scanner has already stopped.
+            }
+
+            scannerRunning = false;
+            stopButton.hidden = true;
+            startButton.disabled = false;
+        }
+
+        async function startScanner() {
+            if (!getStaffId()) return;
+
+            clearMessage();
+
+            if (typeof Html5Qrcode === "undefined") {
+                showMessage(
+                    "The QR scanner library could not load. Check your internet connection and reload.",
+                    "error"
+                );
+                return;
+            }
+
+            try {
+                startButton.disabled = true;
+
+                if (!scanner) {
+                    scanner = new Html5Qrcode("reader");
+                }
+
+                await scanner.start(
+                    { facingMode: "environment" },
+                    {
+                        fps: 10,
+                        qrbox: { width: 240, height: 240 },
+                        aspectRatio: 1
+                    },
+                    async decodedText => {
+                        if (processing) return;
+
+                        processing = true;
+                        currentToken = decodedText;
+
+                        await stopScanner();
+
+                        showMessage("QR detected. Checking pass...", "success");
+
+                        google.script.run
+                            .withSuccessHandler(data => {
+                                currentReservation = data;
+                                setDetails(data);
+                                renderAttendees(data.attendees || []);
+                                reservationPanel.style.display = "block";
+                                summary.hidden = true;
+                                showMessage(
+                                    "Pass verified. Select the attendees who have arrived.",
+                                    "success"
+                                );
+                                processing = false;
+                            })
+                            .withFailureHandler(async err => {
+                                currentToken = "";
+                                showMessage(
+                                    err && err.message
+                                        ? err.message
+                                        : "Unable to verify this QR pass.",
+                                    "error"
+                                );
+                                processing = false;
+                            })
+                            .inspectToken(currentToken, getStaffId());
+                    },
+                    () => {
+                        // Ignore individual camera frame decode failures.
+                    }
+                );
+
+                scannerRunning = true;
+                stopButton.hidden = false;
+                showMessage("Scanner ready. Point the camera at the QR code.", "success");
+            } catch (err) {
+                showMessage(
+                    "Could not start camera. Allow camera access and use HTTPS. " +
+                    (err && err.message ? err.message : ""),
+                    "error"
+                );
+                startButton.disabled = false;
+            }
+        }
+
+        startButton.addEventListener("click", startScanner);
+
+        stopButton.addEventListener("click", async () => {
+            await stopScanner();
+            showMessage("Scanner stopped.", "success");
+        });
+
+        checkInButton.addEventListener("click", () => {
+            const staffId = getStaffId();
+            if (!staffId) return;
+
+            if (!currentToken || !currentReservation) {
+                showMessage("Scan a valid QR pass first.", "error");
+                return;
+            }
+
+            const selected = Array.from(
+                attendeeList.querySelectorAll('input[type="checkbox"]:checked')
+            ).map(el => el.value);
+
+            if (!selected.length) {
+                showMessage("Select at least one attendee.", "error");
+                return;
+            }
+
+            checkInButton.disabled = true;
+            checkInButton.textContent = "Processing...";
+
+            google.script.run
+                .withSuccessHandler(data => {
+                    checkInButton.disabled = false;
+                    checkInButton.textContent = "Confirm Check-in";
+
+                    renderAttendees(data.attendees || []);
+
+                    const lines = (data.results || []).map(item =>
+                        item.name + ": " + item.status.replace(/_/g, " ")
+                    );
+
+                    summary.textContent = lines.join(" · ");
+                    summary.hidden = false;
+
+                    showMessage("Check-in request processed.", "success");
+                })
+                .withFailureHandler(err => {
+                    checkInButton.disabled = false;
+                    checkInButton.textContent = "Confirm Check-in";
+
+                    showMessage(
+                        err && err.message
+                            ? err.message
+                            : "Check-in failed. Please try again.",
+                        "error"
+                    );
+                })
+                .checkIn(currentToken, selected, staffId);
+        });
+
+        scanNextButton.addEventListener("click", async () => {
+            await stopScanner();
+
+            currentToken = "";
+            currentReservation = null;
+            reservationPanel.style.display = "none";
+            attendeeList.replaceChildren();
+            summary.hidden = true;
+            summary.textContent = "";
+            clearMessage();
+
+            startButton.disabled = false;
+            startButton.click();
+        });
+    </script>
+</body>
+
+</html>
