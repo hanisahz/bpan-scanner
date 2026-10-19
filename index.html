@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>BPHB Annual Dinner — Officer Check-in</title>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
@@ -261,8 +261,7 @@
 
             <h3>Select attendees to check in</h3>
             <p class="muted">
-                Tick each person who has arrived. Employees and spouses can be
-                checked in separately.
+                Tick each person who has arrived. Employees and spouses can be checked in separately.
             </p>
 
             <div id="attendeeList"></div>
@@ -280,6 +279,12 @@
     </main>
 
     <script>
+        // CONFIGURATION: Paste your Apps Script clean URL and API Secret here
+        const CONFIG = {
+            APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbxZ3IyknfGQC8MQ7eV7k_c0nwcVZdjWyP66mzgGNrP0nCXOuLSoaam7uIahlAcii6rKXg/exec",
+            API_SECRET: "YOUR_API_SECRET_HERE" // Match the API_SECRET in Apps Script Properties
+        };
+
         const staffInput = document.getElementById("staffId");
         const startButton = document.getElementById("startButton");
         const stopButton = document.getElementById("stopButton");
@@ -331,10 +336,8 @@
                 row.className = "person";
 
                 const isPresent = person.status === "PRESENT";
-
                 const label = document.createElement("label");
 
-                // Only render the checkbox if the attendee is NOT present
                 if (!isPresent) {
                     const checkbox = document.createElement("input");
                     checkbox.type = "checkbox";
@@ -345,7 +348,6 @@
                     label.htmlFor = checkbox.id;
                     row.appendChild(checkbox);
                 } else {
-                    // Add slight indent or style for already checked-in attendees
                     row.style.opacity = "0.75";
                 }
 
@@ -367,15 +369,30 @@
         }
 
         async function callApi(action, payload) {
-            const res = await fetch("/api/attendance", {
+            const bodyData = {
+                action: action,
+                apiSecret: CONFIG.API_SECRET,
+                ...payload
+            };
+
+            // Send request to Apps Script using text/plain to comply with Apps Script CORS behavior
+            const res = await fetch(CONFIG.APPS_SCRIPT_URL, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action, ...payload })
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify(bodyData),
+                redirect: "follow"
             });
 
-            const data = await res.json();
-            if (!res.ok || !data.success) {
-                throw new Error(data.error || "Request failed with status " + res.status);
+            const text = await res.text();
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                throw new Error("Invalid response received from backend server.");
+            }
+
+            if (!data.success) {
+                throw new Error(data.error || "Backend request failed.");
             }
             return data.data;
         }
@@ -385,7 +402,7 @@
             try {
                 await scanner.stop();
             } catch (e) {
-                // Ignore stop errors if hardware already released
+                // Ignore stop errors
             }
             scannerRunning = false;
             stopButton.hidden = true;
@@ -399,7 +416,7 @@
             clearMessage();
 
             if (typeof Html5Qrcode === "undefined") {
-                showMessage("The QR scanner library could not load. Check your network connection and reload.", "error");
+                showMessage("The QR scanner library could not load. Check network connection and reload.", "error");
                 return;
             }
 
@@ -437,7 +454,7 @@
                             renderAttendees(data.attendees || []);
                             reservationPanel.style.display = "block";
                             summary.hidden = true;
-                            showMessage("Pass verified. Select the attendees who have arrived.", "success");
+                            showMessage("Pass verified. Select attendees who arrived.", "success");
                         } catch (err) {
                             currentToken = "";
                             showMessage(err.message || "Unable to verify this QR pass.", "error");
@@ -454,7 +471,7 @@
                 stopButton.hidden = false;
                 showMessage("Scanner ready. Point camera at attendee QR code.", "success");
             } catch (err) {
-                showMessage("Could not access camera. Ensure HTTPS and grant camera permissions. " + (err.message || ""), "error");
+                showMessage("Could not access camera. Ensure HTTPS and grant permissions. " + (err.message || ""), "error");
                 startButton.disabled = false;
             }
         }
